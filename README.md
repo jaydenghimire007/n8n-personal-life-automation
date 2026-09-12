@@ -68,6 +68,10 @@ A conversational logging system — text the bot what you ate or your morning we
 - **Stateful daily aggregation** — implemented "get existing row → merge with new data → append or update" logic in Code nodes to support running totals (calories, EXP) across multiple messages per day, keyed by date
 - **OAuth2 setup from scratch** — configured Google Cloud Console projects, consent screens, and scoped credentials for both Calendar and Sheets APIs
 
+## Development Note
+
+This project was built with Claude (Anthropic) as a technical collaborator — used for drafting initial workflow logic, debugging n8n/Docker/Caddy configuration issues, and refining AI prompts. All architecture decisions, testing, and integration work were done hands-on throughout the build process.
+
 ## Stack
 
 `n8n` · `Docker` · `Docker Compose` · `Caddy` · `DigitalOcean` · `Telegram Bot API` · `Google Calendar API` · `Google Sheets API` · `Anthropic Claude API (Haiku 4.5)` · `JavaScript (n8n Code nodes)`
