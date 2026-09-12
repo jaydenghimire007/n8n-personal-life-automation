@@ -1,0 +1,350 @@
+{
+  "name": "Calorie/Weight Watcher",
+  "nodes": [
+    {
+      "parameters": {
+        "updates": [
+          "message"
+        ],
+        "additionalFields": {}
+      },
+      "type": "n8n-nodes-base.telegramTrigger",
+      "typeVersion": 1.5,
+      "position": [
+        0,
+        0
+      ],
+      "id": "f17f8596-55db-4a0f-b232-2fc449af41c9",
+      "name": "Telegram Trigger",
+      "webhookId": "YOUR_WEBHOOK_ID_HERE",
+      "credentials": {
+        "telegramApi": {
+          "id": "rH7d5XaJswI5HpHZ",
+          "name": "Telegram account 4"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "modelId": {
+          "__rl": true,
+          "value": "claude-haiku-4-5-20251001",
+          "mode": "list",
+          "cachedResultName": "claude-haiku-4-5-20251001"
+        },
+        "messages": {
+          "values": [
+            {
+              "content": "=You are a nutrition and fitness logging assistant. The user will text you either a food/meal description or a body weight reading. Determine which it is and extract the relevant data.\n\nRules:\n- If it's food: estimate total calories for what they described, using typical/average values for those foods and typical portion sizes.\n- If it's a weight reading: extract the number as their weight (assume lbs unless they specify kg).\n- If the message contains both, extract both.\n\nRespond with ONLY valid JSON, no other text, no markdown code fences, in this exact structure:\n{\"type\": \"food\" or \"weight\" or \"both\", \"calories\": number or null, \"weight\": number or null, \"description\": \"short summary of what they logged\"}\n\nMessage: {{ $json.message.text }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.anthropic",
+      "typeVersion": 1,
+      "position": [
+        224,
+        0
+      ],
+      "id": "884d4808-e146-4fc3-b019-d9ea3596f72e",
+      "name": "Message a model",
+      "credentials": {
+        "anthropicApi": {
+          "id": "qCzhlfl3ZlQ05jGe",
+          "name": "Anthropic account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const raw = $input.first().json.content[0].text;\nconst parsed = JSON.parse(raw.trim());\n\nconst today = new Date().toISOString().split('T')[0]; // YYYY-MM-DD\n\nreturn [{\n  json: {\n    type: parsed.type,\n    calories: parsed.calories || 0,\n    weight: parsed.weight || null,\n    description: parsed.description,\n    date: today\n  }\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        592,
+        0
+      ],
+      "id": "d791e30f-870e-4bf7-b6bd-e968223c6a60",
+      "name": "Code in JavaScript"
+    },
+    {
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "value": "YOUR_GOOGLE_SHEET_URL_HERE",
+          "mode": "url"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "YOUR_GOOGLE_SHEET_URL_HERE",
+          "mode": "url"
+        },
+        "filtersUI": {
+          "values": [
+            {
+              "lookupColumn": "Date ",
+              "lookupValue": "={{ $json.date }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        816,
+        0
+      ],
+      "id": "0c8ffd1a-0d2f-4143-962b-70aac9d38ef9",
+      "name": "Get row(s) in sheet",
+      "alwaysOutputData": true,
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "FBObC2aE8XUTUrGd",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const newEntry = $('Code in JavaScript').first().json; // reference your first Code node's output — rename if needed\nconst existingRows = $input.all();\nconst existing = existingRows.length > 0 ? existingRows[0].json : null;\n\nconst currentCalories = existing ? (existing.Calories || 0) : 0;\nconst newCalories = currentCalories + (newEntry.calories || 0);\n\nconst currentWeight = existing ? existing.Weight : null;\nconst finalWeight = newEntry.weight !== null ? newEntry.weight : currentWeight;\n\nconst currentLog = existing ? (existing.Log || \"\") : \"\";\nconst newLog = currentLog ? `${currentLog}; ${newEntry.description}` : newEntry.description;\n\nconst remaining = 3000 - newCalories;\n\nreturn [{\n  json: {\n    Date: newEntry.date,\n    Weight: finalWeight,\n    Calories: newCalories,\n    Log: newLog,\n    remaining: remaining\n  }\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1040,
+        0
+      ],
+      "id": "1361383f-d80e-4093-ba5c-68b19354f5d0",
+      "name": "Code in JavaScript1"
+    },
+    {
+      "parameters": {
+        "operation": "appendOrUpdate",
+        "documentId": {
+          "__rl": true,
+          "value": "YOUR_GOOGLE_SHEET_URL_HERE",
+          "mode": "url"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "YOUR_GOOGLE_SHEET_URL_HERE",
+          "mode": "url"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "Date ": "={{ $json.Date }}",
+            "Weight": "={{ $json.Weight }}",
+            "Calories": "={{ $json.Calories }}",
+            "Log": "={{ $json.Log }}"
+          },
+          "matchingColumns": [
+            "Date "
+          ],
+          "schema": [
+            {
+              "id": "Date ",
+              "displayName": "Date ",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Weight",
+              "displayName": "Weight",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Calories",
+              "displayName": "Calories",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Log",
+              "displayName": "Log",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        1264,
+        0
+      ],
+      "id": "a17cdc0f-64c1-40d1-9a09-f3dcb22502db",
+      "name": "Append or update row in sheet",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "FBObC2aE8XUTUrGd",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "chatId": "YOUR_TELEGRAM_CHAT_ID",
+        "text": "=✅ Logged: {{ $json.Log }} \nToday's total: {{ $json.Calories }} / 3000 cal \nRemaining: {{ $json.remaining }} cal \nWeight today: {{ $json.Weight }}",
+        "additionalFields": {}
+      },
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        1712,
+        0
+      ],
+      "id": "d1197e4a-c076-43a7-9bc9-53b027956229",
+      "name": "Send a text message",
+      "webhookId": "YOUR_WEBHOOK_ID_HERE",
+      "credentials": {
+        "telegramApi": {
+          "id": "rH7d5XaJswI5HpHZ",
+          "name": "Telegram account 4"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const calories = $json.Calories || 0;\nconst remaining = 3000 - calories;\nreturn [{ json: { ...$json, remaining: remaining } }];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1488,
+        0
+      ],
+      "id": "6575b852-047f-45c0-aeda-9f5308818f0e",
+      "name": "Code in JavaScript2"
+    }
+  ],
+  "pinData": {
+    "Get row(s) in sheet": [
+      {
+        "json": {
+          "name": "First item",
+          "code": 1
+        }
+      },
+      {
+        "json": {
+          "name": "Second item",
+          "code": 2
+        }
+      }
+    ]
+  },
+  "connections": {
+    "Telegram Trigger": {
+      "main": [
+        [
+          {
+            "node": "Message a model",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Message a model": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript": {
+      "main": [
+        [
+          {
+            "node": "Get row(s) in sheet",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get row(s) in sheet": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript1": {
+      "main": [
+        [
+          {
+            "node": "Append or update row in sheet",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Append or update row in sheet": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript2": {
+      "main": [
+        [
+          {
+            "node": "Send a text message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "versionId": "527fd0a7-d46f-4106-a1a3-ca2bff0a843d",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "YOUR_INSTANCEID_HERE"
+  },
+  "nodeGroups": [],
+  "id": "WAbM9JKVjedhti90",
+  "tags": []
+}
