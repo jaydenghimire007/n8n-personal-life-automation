@@ -1,0 +1,387 @@
+{
+  "name": "To-Do Bot",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "triggerAtHour": 8
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.4,
+      "position": [
+        0,
+        0
+      ],
+      "id": "d6b07e5a-c487-4620-acea-866b42456864",
+      "name": "Schedule Trigger"
+    },
+    {
+      "parameters": {
+        "operation": "getAll",
+        "calendar": {
+          "__rl": true,
+          "value": "YOUR_EMAIL@gmail.com",
+          "mode": "list",
+          "cachedResultName": "YOUR_EMAIL@gmail.com"
+        },
+        "timeMin": "={{$now.startOf('day')}}",
+        "timeMax": "={{$now.endOf('day')}}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleCalendar",
+      "typeVersion": 1.3,
+      "position": [
+        224,
+        0
+      ],
+      "id": "d91c6eeb-4109-45da-90eb-58660fda253c",
+      "name": "Get many events",
+      "credentials": {
+        "googleCalendarOAuth2Api": {
+          "id": "VRKllEvRmUzBpfWD",
+          "name": "Google Calendar account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "chatId": "YOUR_TELEGRAM_CHAT_ID",
+        "text": "={{ $json.finalMessage }}",
+        "additionalFields": {}
+      },
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        2048,
+        0
+      ],
+      "id": "9a3a0404-56f9-454d-a4ca-2b2a46f67a82",
+      "name": "Send a text message",
+      "webhookId": "b95f04b9-fe0a-4177-aa64-60a162d0f1af",
+      "credentials": {
+        "telegramApi": {
+          "id": "TDfAhvKQ1Tj6uSbC",
+          "name": "Telegram account 2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "modelId": {
+          "__rl": true,
+          "value": "claude-haiku-4-5-20251001",
+          "mode": "list",
+          "cachedResultName": "claude-haiku-4-5-20251001"
+        },
+        "messages": {
+          "values": [
+            {
+              "content": "=You are a \"System\" interface, like the notification window from a game where the user levels up by completing real-life tasks. Convert the user's calendar events into a gamified daily quest board.\n\nFor each event, classify it into exactly one stat category: Strength (physical activity/gym), Intelligence (study/work/classes), Social (hangouts/events/relationships), Vitality (health/sleep/self-care), or Discipline (routine/consistency tasks).\n\nRespond with ONLY valid JSON, no other text, no markdown fences, in this exact structure:\n{\n  \"questBoardText\": \"the full formatted quest board as a string, using the emoji/rank/EXP style you'd normally use\",\n  \"events\": [\n    {\"title\": \"event name\", \"category\": \"Strength|Intelligence|Social|Vitality|Discipline\", \"startTime\": \"ISO datetime\", \"endTime\": \"ISO datetime or null\"}\n  ]\n}\n\nIf an event has no clear end time, estimate a reasonable duration (e.g., 60 minutes) rather than leaving it null.\n\nToday's events: {{ $json.eventList }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.anthropic",
+      "typeVersion": 1,
+      "position": [
+        688,
+        0
+      ],
+      "id": "e90100b0-3d31-4c7d-956a-659c22a7cd09",
+      "name": "Message a model",
+      "credentials": {
+        "anthropicApi": {
+          "id": "qCzhlfl3ZlQ05jGe",
+          "name": "Anthropic account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "return [{ json: { eventList: $input.all().map(item => `${item.json.summary} at ${item.json.start.dateTime || item.json.start.date}`).join(', ') } }];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        464,
+        0
+      ],
+      "id": "911c76b1-74f4-41bd-99dc-d43f45fac8cf",
+      "name": "Code in JavaScript"
+    },
+    {
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "value": "YOUR_GOOGLE_SHEET_URL_HERE",
+          "mode": "url"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "YOUR_GOOGLE_SHEET_URL_HERE",
+          "mode": "url"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        1056,
+        0
+      ],
+      "id": "9d8796de-01e2-48a3-b610-fb90e2ac0c69",
+      "name": "Get row(s) in sheet",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "FBObC2aE8XUTUrGd",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "appendOrUpdate",
+        "documentId": {
+          "__rl": true,
+          "value": "YOUR_GOOGLE_SHEET_URL_HERE",
+          "mode": "url"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "YOUR_GOOGLE_SHEET_URL_HERE",
+          "mode": "url"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "Stat": "={{ $json.Stat }}"
+          },
+          "matchingColumns": [
+            "Stat"
+          ],
+          "schema": [
+            {
+              "id": "Stat",
+              "displayName": "Stat",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "TotalEXP",
+              "displayName": "TotalEXP",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Level",
+              "displayName": "Level",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Progress",
+              "displayName": "Progress",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        1504,
+        0
+      ],
+      "id": "9a1e7d72-e307-4102-9fc2-fa3e4d77a3a8",
+      "name": "Append or update row in sheet",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "FBObC2aE8XUTUrGd",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const questText = $('Calculate EXP').first().json.questBoardText;\nconst stats = $('Merge Stats').all().map(item => item.json); // replace 'Merge Stats' with your actual node name\n\nlet statBlock = \"\\n\\n📊 STAT PROGRESS 📊\\n\";\nstats.forEach(s => {\n  const bar = \"█\".repeat(Math.floor(s.Progress / 100)) + \"░\".repeat(15 - Math.floor(s.Progress / 100));\n  statBlock += `${s.Stat}: Lv.${s.Level} [${bar}] +${s.gained} EXP\\n`;\n  if (s.leveledUp) {\n    statBlock += `🎉 LEVEL UP! ${s.Stat} reached Level ${s.Level}!\\n`;\n  }\n});\n\nreturn [{ json: { finalMessage: questText + statBlock } }];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1728,
+        0
+      ],
+      "id": "8f62a456-af5f-45ec-8dc4-1f67c001fc20",
+      "name": "Code in JavaScript2"
+    },
+    {
+      "parameters": {
+        "jsCode": "const raw = $input.first().json.content[0].text;\n\nconst cleaned = raw\n  .replace(/```json/gi, '')\n  .replace(/```/g, '')\n  .trim();\n\nconst parsed = JSON.parse(cleaned);\n\nconst categories = [\"Strength\", \"Intelligence\", \"Social\", \"Vitality\", \"Discipline\"];\nconst gains = {};\ncategories.forEach(cat => gains[cat] = 0);\n\nparsed.events.forEach(event => {\n  const start = new Date(event.startTime);\n  const end = event.endTime ? new Date(event.endTime) : new Date(start.getTime() + 60 * 60000);\n  const minutes = Math.max(0, Math.round((end - start) / 60000));\n  if (gains[event.category] !== undefined) {\n    gains[event.category] += minutes;\n  }\n});\n\nreturn [{\n  json: {\n    questBoardText: parsed.questBoardText,\n    gains: gains\n  }\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1200,
+        144
+      ],
+      "id": "51074e8e-f3eb-43a4-be6c-450dfec37f2b",
+      "name": "Calculate EXP"
+    },
+    {
+      "parameters": {
+        "jsCode": "const previousData = $('Calculate EXP').first().json; // match this name to your actual node name\nconst currentStats = $input.all();\n\nconst LEVEL_SIZE = 1500;\n\nconst results = currentStats.map(row => {\n  const statName = row.json.Stat;\n  const currentTotal = parseInt(row.json.TotalEXP) || 0;\n  const gained = previousData.gains[statName] || 0;\n  const newTotal = currentTotal + gained;\n  const newLevel = Math.floor(newTotal / LEVEL_SIZE) + 1;\n  const progress = newTotal % LEVEL_SIZE;\n  const oldLevel = Math.floor(currentTotal / LEVEL_SIZE) + 1;\n\n  return {\n    json: {\n      Stat: statName,\n      TotalEXP: newTotal,\n      Level: newLevel,\n      Progress: progress,\n      gained: gained,\n      leveledUp: newLevel > oldLevel\n    }\n  };\n});\n\nreturn results;"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1280,
+        0
+      ],
+      "id": "ba89ed11-7a0e-4d29-bab4-09b476f71e80",
+      "name": "Merge Stats"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Schedule Trigger": {
+      "main": [
+        [
+          {
+            "node": "Get many events",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get many events": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send a text message": {
+      "main": [
+        []
+      ]
+    },
+    "Message a model": {
+      "main": [
+        [
+          {
+            "node": "Calculate EXP",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript": {
+      "main": [
+        [
+          {
+            "node": "Message a model",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get row(s) in sheet": {
+      "main": [
+        [
+          {
+            "node": "Merge Stats",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Append or update row in sheet": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript2": {
+      "main": [
+        [
+          {
+            "node": "Send a text message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Calculate EXP": {
+      "main": [
+        [
+          {
+            "node": "Get row(s) in sheet",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Merge Stats": {
+      "main": [
+        [
+          {
+            "node": "Append or update row in sheet",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "versionId": "965da43d-a4e6-4c86-9f12-4209b3912534",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "dfb84d9285a55a662ceb812fbddac1579c006c4014785c1fc41255984f5a296a"
+  },
+  "nodeGroups": [],
+  "id": "e2WhvYAcoxvRg1IJ",
+  "tags": []
+}
