@@ -6,4 +6,5 @@ jobs:
   hello:
     runs-on: ubuntu-latest
     steps:
-      - run: echo "hello from CI"
+      - uses: actions/checkout@v4
+      - run: ls workflows/
